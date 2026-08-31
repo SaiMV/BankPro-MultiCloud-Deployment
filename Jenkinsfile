@@ -8,8 +8,8 @@ pipeline {
         string(name: 'IMAGE_TAG',
                defaultValue: '3.1',
                description: 'Docker image tag')
-        string(name: 'AWS_HOST',
-               defaultValue: 'AWS_PUBLIC_IP',
+        string(name: 'AWS_PUBLIC_IP',
+             defaultValue: '3.94.247.30',
                description: 'AWS VM public IP or DNS')
         string(name: 'AZURE_HOST',
                defaultValue: 'AZURE_PUBLIC_IP',
@@ -17,8 +17,9 @@ pipeline {
     }
 
     environment {
-        IMAGE_NAME = "${params.DOCKERHUB_USERNAME}/bankpro-banking-app"
-        IMAGE = "${IMAGE_NAME}:${params.IMAGE_TAG}"
+        DOCKER_IMAGE = 'saimullassery/bankpro-banking-app'
+    IMAGE_TAG = "${params.IMAGE_TAG}"
+    AWS_PUBLIC_IP = "${params.AWS_PUBLIC_IP}"
     }
 
     stages {
