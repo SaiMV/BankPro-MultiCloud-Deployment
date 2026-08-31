@@ -3,7 +3,7 @@ pipeline {
 
     parameters {
         string(name: 'DOCKERHUB_USERNAME',
-               defaultValue: 'YOUR_DOCKERHUB_USERNAME',
+               defaultValue: 'saimullassery',
                description: 'DockerHub username')
         string(name: 'IMAGE_TAG',
                defaultValue: '3.0',
