@@ -36,10 +36,13 @@ pipeline {
         }
 
         stage('Docker Build') {
-            steps {
-                sh 'docker build -t ${IMAGE} .'
-            }
-        }
+    steps {
+        sh '''
+            docker build \
+              -t ${DOCKER_IMAGE}:${IMAGE_TAG} .
+        '''
+    }
+}
 
         stage('Docker Login & Push') {
             steps {
