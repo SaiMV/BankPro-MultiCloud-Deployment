@@ -1,0 +1,46 @@
+---
+- name: Deploy BankPro Banking Application to AWS and Azure
+  hosts: multicloud
+  become: true
+  gather_facts: true
+
+  vars:
+    docker_image: "YOUR_DOCKERHUB_USERNAME/bankpro-banking-app:3.0"
+    container_name: "bankpro-banking-app"
+    app_port: "8080"
+
+  tasks:
+    - name: Verify Docker is installed
+      ansible.builtin.command: docker --version
+      register: docker_version
+      changed_when: false
+
+    - name: Pull application image
+      community.docker.docker_image:
+        name: "{{ docker_image }}"
+        source: pull
+
+    - name: Stop existing BankPro container
+      community.docker.docker_container:
+        name: "{{ container_name }}"
+        state: absent
+
+    - name: Start BankPro container
+      community.docker.docker_container:
+        name: "{{ container_name }}"
+        image: "{{ docker_image }}"
+        state: started
+        restart_policy: unless-stopped
+        published_ports:
+          - "{{ app_port }}:8080"
+
+    - name: Wait for application port
+      ansible.builtin.wait_for:
+        host: "127.0.0.1"
+        port: 8080
+        delay: 5
+        timeout: 60
+
+    - name: Display deployment information
+      ansible.builtin.debug:
+        msg: "BankPro application deployed successfully on {{ inventory_hostname }}"
