@@ -217,6 +217,7 @@ stage('Deploy to AWS') {
         }
     }
 }
+    }
 
     post {
         success {
