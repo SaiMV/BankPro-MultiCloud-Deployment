@@ -17,12 +17,20 @@ pipeline {
     string(name: 'AZURE_HOST',
            defaultValue: 'AZURE_PUBLIC_IP',
            description: 'Azure VM public IP or DNS')
+
+           string(
+    name: 'AZURE_HOST',
+    defaultValue: '57.154.243.5',
+    description: 'Azure VM public IP or DNS'
+)
 }
 
     environment {
         DOCKER_IMAGE = 'saimullassery/bankpro-banking-app'
     IMAGE_TAG = "${params.IMAGE_TAG}"
     AWS_PUBLIC_IP = "${params.AWS_PUBLIC_IP}"
+        AZURE_HOST = "${params.AZURE_HOST}"
+
     }
 
     stages {
@@ -46,7 +54,26 @@ pipeline {
         '''
     }
 }
+stage('Test Azure SSH') {
+    steps {
+        withCredentials([
+            sshUserPrivateKey(
+                credentialsId: 'azure-ssh-key',
+                keyFileVariable: 'AZURE_SSH_KEY',
+                usernameVariable: 'AZURE_SSH_USER'
+            )
+        ]) {
+            sh '''
+                chmod 600 "$AZURE_SSH_KEY"
 
+                ssh -o StrictHostKeyChecking=no \
+                    -i "$AZURE_SSH_KEY" \
+                    "$AZURE_SSH_USER@$AZURE_HOST" \
+                    "docker ps && curl -fsS http://localhost:8080/api/health"
+            '''
+        }
+    }
+}
        stage('Docker Build & Push') {
     steps {
         withCredentials([usernamePassword(
@@ -212,6 +239,62 @@ stage('Deploy to AWS') {
                 echo ""
                 echo "========================================="
                 echo "AWS DEPLOYMENT SUCCESSFUL"
+                echo "========================================="
+            '''
+        }
+    }
+}
+
+stage('Deploy to Azure') {
+    steps {
+        withCredentials([
+            sshUserPrivateKey(
+                credentialsId: 'azure-ssh-key',
+                keyFileVariable: 'AZURE_SSH_KEY',
+                usernameVariable: 'AZURE_SSH_USER'
+            )
+        ]) {
+            sh '''
+                set -e
+
+                echo "========================================="
+                echo "Deploying BankPro to Azure VM..."
+                echo "Azure Host: ${AZURE_HOST}"
+                echo "Docker Image: ${DOCKER_IMAGE}:${IMAGE_TAG}"
+                echo "========================================="
+
+                chmod 600 "$AZURE_SSH_KEY"
+
+                ssh -o StrictHostKeyChecking=no \
+                    -i "$AZURE_SSH_KEY" \
+                    "${AZURE_SSH_USER}@${AZURE_HOST}" \
+                    "set -e
+                     echo 'Pulling Docker image...'
+                     docker pull ${DOCKER_IMAGE}:${IMAGE_TAG}
+
+                     echo 'Removing existing container...'
+                     docker rm -f bankpro-banking-app 2>/dev/null || true
+
+                     echo 'Starting BankPro...'
+                     docker run -d \
+                       --name bankpro-banking-app \
+                       --restart unless-stopped \
+                       -p 8080:8080 \
+                       ${DOCKER_IMAGE}:${IMAGE_TAG}
+
+                     echo 'Container status:'
+                     docker ps
+                    "
+
+                echo "Waiting for BankPro application..."
+                sleep 20
+
+                echo "Running Azure health check..."
+                curl -fsS "http://${AZURE_HOST}:8080/api/health"
+
+                echo ""
+                echo "========================================="
+                echo "AZURE DEPLOYMENT SUCCESSFUL"
                 echo "========================================="
             '''
         }
